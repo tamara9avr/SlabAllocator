@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <windows.h>
+#include <assert.h>
 
 void initialize_blocks() {
 	void* start = head->memStart;
@@ -23,7 +24,7 @@ void initialize_entries(int numOfBlocks) {
 	int loss = 0;
 	for (int i = 0; i < head->NumOfEntries; i++) {
 		head->entries[i].blocks = NULL;
-		//head->entries[i].sizeId = i;
+		head->entries[i].blocks = NULL;
 		head->entries[i].FirstToMerge = start;
 		int s = sizeof(int*) * numOfBlocks / (1 << (i + 1));
 		start = (void*)((size_t)start + s);
@@ -66,25 +67,23 @@ buddy_head* buddy_init(void* memptr, int numOfBlocks)
 	head->size = size;
 	head->NumOfEntries = numOfEntries;
 	head->memStart = (void*)((size_t)memptr + numOfEntries * sizeof(entry_head) + sizeof(buddy_head));
+
+	if (head->memStart > (void*)((size_t)head->start + head->size)) return NULL;
+
 	head->memSize = size - ((size_t)numOfEntries * sizeof(entry_head) + sizeof(buddy_head));
 	head->entries = (entry_head*)((size_t)memptr + sizeof(buddy_head));
+	InitializeCriticalSection(&head->lock);
 
 	initialize_entries(numOfBlocks);
 
 	return head;
 }
 
-int closest_log(int num) {
-	int cnt = -1;
-	while (num > 0) {
-		cnt = cnt + 1;
-		num >>= 1;
-	}
-	return cnt;
-}
+
 
 void buddy_destroy()
 {
+	DeleteCriticalSection(&head->lock);
 	free(head);
 	head = NULL;
 }
@@ -137,22 +136,19 @@ void* buddy_alloc(size_t memsize)
 
 	if (id <= head->NumOfEntries)
 	{
+		EnterCriticalSection(&head->lock);
 		ret = allocate(id);
+		LeaveCriticalSection(&head->lock);
 	}
+
 	return ret;
 }
 
-int block_size(int par) {
-	int ret = closest_log(par);
-	if((par - (1 << ret)) != 0) {
-		ret += 1;
-	}
-	return ret;
-}
+
 
 void removeBlock(block_head* memptr, int i) {
 	block_head* curr = head->entries[i].blocks, * prev = NULL;
-	while (curr != memptr) {									//curr ne moze da bude null, zato se onda ne bi uslo u funkciju
+	while (curr != memptr) {									
 		prev = curr;
 		curr = curr->next;
 	}
@@ -169,18 +165,18 @@ int* findPair(int* memptr, int i) {
 	int numOfBlocks = head->memSize / BLOCK_SIZE;
 	for (int k = 0; k < (numOfBlocks / (1 << (i + 1))); k++) {
 		if ((head->entries[i].FirstToMerge[k] + BLOCK_SIZE * (1 << i)) == memptr) {
-			return head->entries[i].FirstToMerge[k];
+			return (int*)(head->entries[i].FirstToMerge[k]);
 		}
 		if (head->entries[i].FirstToMerge[k] == memptr) {
-			return head->entries[i].FirstToMerge[k] + BLOCK_SIZE * (1 << i);
+			return (int*)(head->entries[i].FirstToMerge[k] + BLOCK_SIZE * (1 << i));
 		}
 	}
 	return NULL;
 }
 
-boolean findAddr(int* memptr, int i) {
+block_head* findAddr(int* memptr, int i) {
 	block_head* curr = head->entries[i].blocks;
-	while (curr && curr != memptr) {
+	while (curr && curr != (block_head*)memptr) {
 		curr = curr->next;
 	}
 	return curr;
@@ -189,8 +185,8 @@ boolean findAddr(int* memptr, int i) {
 void insertBlock(void* memptr, int i) {
 	int* pair = findPair(memptr, i);
 	if (pair && findAddr(pair, i)) {
-		removeBlock(pair, i);
-		if (pair > memptr) {
+		removeBlock((block_head*)pair, i);
+		if (pair > (int*)memptr) {
 			insertBlock(memptr, i + 1);
 		}
 		else {
@@ -216,9 +212,11 @@ void insertBlock(void* memptr, int i) {
 
 void buddy_free(void* memptr, size_t memSize)
 {
+	EnterCriticalSection(&head->lock);
 	if (memptr < head->start || memptr>(void*)((size_t)head->start + head->size)) return NULL;
 	size_t help = ceil((double)memSize / BLOCK_SIZE);
 	int numOfBlocks = block_size(help);
 	insertBlock(memptr, numOfBlocks);
+	LeaveCriticalSection(&head->lock);
 }
 

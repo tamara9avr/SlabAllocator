@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <windows.h>
+#include "global.h"
 
 #define BLOCK_SIZE 4096
 
@@ -22,6 +23,7 @@ typedef struct Buddy_Head_Struct {
 	void* memStart;
 	int NumOfEntries;
 	entry_head* entries;
+	CRITICAL_SECTION lock;
 } buddy_head;
 
 buddy_head* head;
@@ -31,8 +33,6 @@ void initialize_blocks();
 void initialize_entries(int numOfBlocks);
 
 buddy_head* buddy_init(void* memptr, int numOfBlocks);
-
-int closest_log(int num);
 
 void buddy_destroy();
 
@@ -46,13 +46,11 @@ void* allocate(int i);
 
 void* buddy_alloc(size_t memsize);
 
-int block_size(int par);
-
 void removeBlock(block_head* memptr, int i);
 
 int* findPair(int* memptr, int i);
 
-boolean findAddr(int* memptr, int i);
+block_head* findAddr(int* memptr, int i);
 
 void insertBlock(void* memptr, int i);
 

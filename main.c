@@ -6,8 +6,8 @@
 #include "test.h"
 
 #define BLOCK_NUMBER (1000)
-#define THREAD_NUM (1)
-#define ITERATIONS (250)
+#define THREAD_NUM (5)
+#define ITERATIONS (1000)
 
 #define shared_size (7)
 
@@ -69,7 +69,6 @@ void work(void* pdata) {
 	kmem_cache_destroy(cache);
 }
 
-
 int main() {
 	void *space = malloc(BLOCK_SIZE * BLOCK_NUMBER);
 	kmem_init(space, BLOCK_NUMBER);
@@ -82,40 +81,5 @@ int main() {
 
 	kmem_cache_destroy(shared);
 	free(space);
-	//void* memptr = malloc(BLOCK_SIZE * 17);
-
-	/*buddy_init(memptr, 17);
-	void * ptr1 = buddy_alloc(2048);
-	void* ptr2 = buddy_alloc(BLOCK_SIZE);
-	void* ptr3 = buddy_alloc(2 * BLOCK_SIZE);
-	void* ptr4 = buddy_alloc(35);
-
-	int pp = ptr4;
-	int pp1 = ((size_t) ptr4 + BLOCK_SIZE);
-
-	buddy_free(ptr1, 2048);
-	buddy_free(ptr3, 8192);
-	buddy_free(ptr4, 35);
-	buddy_free(ptr2, 4096);
-
-	buddy_destroy();*/
-
-	//kmem_init(memptr, 17);
-	//kmem_cache_t* c1 = kmem_cache_create("Cache 1", 10, const1, NULL);
-	//kmem_cache_t* c2 = kmem_cache_create("Cache 2", 7, const2, NULL);
-
-
-	//for (int i = 0; i < 1000; i++) {
-	//	if (i % 50 == 0) {
-	//		void* data = kmem_cache_alloc(c1);
-	//	}
-	//	else {
-	//		void* data = kmem_cache_alloc(c2);
-	//	}
-	//}
-
-	//kmem_cache_info(c1);
-	//kmem_cache_info(c2);
-
 	return 0;
 }
