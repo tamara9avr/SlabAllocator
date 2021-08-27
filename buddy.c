@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <windows.h>
-#include <assert.h>
 
 void initialize_blocks() {
 	void* start = head->memStart;

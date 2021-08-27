@@ -2,7 +2,6 @@
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
-#include <assert.h>
 
 void kmem_init(void* space, int block_num)
 {
@@ -311,7 +310,10 @@ void create_slab(slab_head** slabs, size_t objectSize, size_t* l1) {
 void* kmalloc(size_t size)
 {
 	size = block_size(size);
-	assert((size >= MIN_BUFFER_SIZE) && (size <= MAX_BUFFER_SIZE));
+	if ((size < MIN_BUFFER_SIZE) && (size > MAX_BUFFER_SIZE)) {
+		printf_s("Bad buffer size");
+		return NULL;
+	}
 
 
 	int id = size - MIN_BUFFER_SIZE;
